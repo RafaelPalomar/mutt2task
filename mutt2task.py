@@ -1,20 +1,21 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
- 
+
 ## About
 # Add a mail as task to taskwarrior.
 # Work in conjuction with taskopen script
-# 
+#
 ## Usage
 # add this to your .muttrc:
-# macro index,pager t "<pipe-message>mutt2task.py<enter>" 
- 
+# macro index,pager t "<pipe-message>mutt2task.py<enter>"
+
 import os
 import sys
 import email
 import re
 import errno
 import shutil
+from six import u as unicode
 
 from email.header import decode_header
 from subprocess import call, Popen, PIPE
@@ -56,19 +57,11 @@ for part in message.walk():
     if part.get_content_type() == "text/plain":
         if body is None:
             body = ""
-        body += unicode(
-            part.get_payload(decode=True),
-            part.get_content_charset(),
-            'replace'
-        ).encode('utf8','replace')
+        body += unicode(part.get_payload(decode=True)).decode('utf8','replace')
     elif part.get_content_type() == "text/html":
         if html is None:
             html = ""
-        html += unicode(
-            part.get_payload(decode=True),
-            part.get_content_charset(),
-            'replace'
-        ).encode('utf8','replace')
+        html += unicode(part.get_payload(decode=True)).decode('utf8','replace')
 
 tmpfile = Popen('mktemp', stdout=PIPE).stdout.read().strip()
 out = ""
@@ -83,24 +76,24 @@ else:
     out = body
 
 with open(tmpfile, "w") as f:
-    f.write(out)
+    f.write(out.decode())
 
 message = message['Subject']
- 
+
 # decode internationalized subject and transform ascii into utf8
 message = decode_header(message)
-message = ' '.join([unicode(t[0], t[1] or 'ASCII') for t in message])
+message = ' '.join([unicode(t[0]) for t in message])
 message = message.encode('utf8')
- 
+
 # customize your own taskwarrior line
 # use `message' to add the subject
 if message == "None":
     message = "E-Mail import: no subject specified."
 else:
-    message = "E-Mail subject: " + message
+    message = "E-Mail subject: " + message.decode()
 
 res = Popen(['task', 'add', 'pri:L', '+email', '--', message], stdout=PIPE)
-match = re.match("^Created task (\d+).*", res.stdout.read())
+match = re.match("^Created task (\d+).*", res.stdout.read().decode())
 if match:
     print(match.string.strip())
     id = match.group(1)
@@ -110,7 +103,7 @@ if match:
         print("ERR: Sorry, cannot annotate task with ID=%s." % id)
         rollback()
 
-    notes_file = notes_folder + "/" + uuid + ".txt"
+    notes_file = notes_folder + "/" + uuid.decode() + ".txt"
     try:
         shutil.copy(tmpfile, notes_file)
         os.remove(tmpfile)
